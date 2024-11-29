@@ -169,6 +169,9 @@ public class cubes1 {
         //viewer.display(settled.bricks);
         //out.println(settled);
         out.println(settled.disintegratable());
+        out.println(settled.chainfallSum());
+
+
     }
 
     record Support(Set<Brick> supports, Set<Brick> supportedBy) {
@@ -212,6 +215,50 @@ public class cubes1 {
                 return true;
             }
             return support.supports.isEmpty() || support.supports.stream().map(supportMap::get).allMatch(s -> s.supportedBy.size() > 1);
+        }
+
+        boolean onlySupport(Brick brick, Brick support) {
+            var s = supportMap.get(brick);
+            if (s == null) {
+                return true;
+            }
+            return s.supportedBy.size() == 1 && s.supportedBy.contains(support);
+        }
+
+        /**
+         * Disintegrating bricks one at a time isn't going to be fast enough. While it might sound dangerous, what you really need is a chain reaction.
+         *
+         * You'll need to figure out the best brick to disintegrate. For each brick, determine how many other bricks would fall if that brick were disintegrated.
+         *
+         * Using the same example as above:
+         *
+         *     Disintegrating brick A would cause all 6 other bricks to fall.
+         *     Disintegrating brick F would cause only 1 other brick, G, to fall.
+         *
+         * Disintegrating any other brick would cause no other bricks to fall. So, in this example, the sum of the number of other bricks that would fall as a result of disintegrating each brick is 7.
+         *
+         * For each brick, determine how many other bricks would fall if that brick were disintegrated. What is the sum of the number of other bricks that would fall?
+         * @param brick
+         * @return
+         */
+        long chainReaction(Brick brick) {
+            Set<Brick> removed = new HashSet<>();
+
+            Set<Brick> nextStepOfChainReaction = new HashSet<>();
+            nextStepOfChainReaction.add(brick);
+            while (!nextStepOfChainReaction.isEmpty()) {
+                removed.addAll(nextStepOfChainReaction);
+                nextStepOfChainReaction = nextStepOfChainReaction.stream().map(supportMap::get)
+                        .filter(Objects::nonNull)
+                        .flatMap(s -> s.supports.stream())
+                        .filter(b -> supportMap.get(b).supportedBy.stream().allMatch(removed::contains))
+                        .collect(Collectors.toSet());
+            }
+            return removed.size()-1;
+        }
+
+        long chainfallSum() {
+            return bricks.stream().mapToLong(this::chainReaction).sum();
         }
     }
 }
